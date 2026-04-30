@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Full Page Capturer",
+  "version": "1.0",
+  "description": "Captures full-page screenshots, including expanded iframes like Shopify theme previews.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "debugger",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

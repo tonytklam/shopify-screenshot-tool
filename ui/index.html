@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shopify Screenshot Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+JP:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root, [data-theme="journal"] {
+      --journal-paper: #F5F0E8;
+      --journal-ink: #3D3B38;
+      --journal-washi: #EDE7DA;
+      --journal-green: #6B7F5E;
+      --journal-brown: #8B6F4E;
+      --journal-cream: #F5F0E8;
+      --journal-taupe: #A89F91;
+      --border-subtle: rgba(61,59,56,0.10);
+      --border-strong: rgba(61,59,56,0.22);
+      --accent-warm: #8B6F4E;
+      --accent-warm-hover: #A07E5A;
+      --text-primary: #3D3B38;
+      --text-secondary: #7A746B;
+      --text-muted: #A89F91;
+      --success-ink: #6B7F5E;
+      --warning-ink: #B8924A;
+      --error-ink: #A3503B;
+      
+      --font-serif: 'Noto Serif JP', 'Georgia', serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+      --radius-sm: 0px;
+      --radius-md: 6px;
+      --radius-lg: 10px;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--journal-paper);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--journal-paper);
+      position: relative;
+      z-index: 2;
+    }
+    .logo { 
+      display: flex; align-items: center; gap: 10px; 
+      font-family: var(--font-serif);
+      font-size: 1.25rem; font-weight: 600; font-style: italic;
+      color: var(--journal-ink);
+    }
+    .logo-icon { font-size: 1.4rem; font-style: normal; opacity: 0.8; filter: grayscale(100%); }
+
+    #auth-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: var(--radius-md);
+      font-size: 0.75rem; font-weight: 500; letter-spacing: 0.04em;
+      background: transparent; border: 1px solid var(--border-strong);
+      color: var(--text-secondary);
+      transition: all .35s ease-out;
+      cursor: pointer;
+    }
+    #auth-badge:hover { background: rgba(0,0,0,0.02); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.ok  { background: var(--success-ink); }
+    .dot.bad { background: var(--error-ink); }
+    .dot.checking { background: var(--journal-taupe); animation: softBlink 1.5s infinite; }
+    @keyframes softBlink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Main layout ── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 0;
+      overflow: hidden;
+      height: calc(100vh - 65px);
+      position: relative;
+    }
+
+    /* ── Left panel ── */
+    .panel-left {
+      background: var(--journal-washi);
+      border-right: 1px solid var(--border-subtle);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: .04em;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      font-family: var(--font-sans);
+    }
+
+    /* URL input group */
+    .url-group { display: flex; flex-direction: column; gap: 8px; }
+    .url-row { display: flex; gap: 8px; }
+
+    label.field-label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    input[type="text"], input[type="url"] {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-strong);
+      border-radius: 0;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      padding: 11px 4px;
+      outline: none;
+      transition: border-color .35s ease-out;
+    }
+    input[type="text"]:focus, input[type="url"]:focus {
+      border-bottom-color: var(--accent-warm);
+    }
+    input::placeholder { color: var(--text-muted); font-style: italic; font-family: var(--font-serif); }
+
+    .btn-paste {
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0 14px;
+      transition: all .35s ease-out;
+      filter: grayscale(100%);
+      opacity: 0.7;
+    }
+    .btn-paste:hover { 
+      border-color: var(--accent-warm); 
+      color: var(--accent-warm); 
+      background: rgba(139,111,78,0.06);
+      opacity: 1;
+    }
+    .btn-paste:active { transform: scale(0.97); }
+
+    /* Device selector */
+    .device-group { display: flex; gap: 8px; }
+    .device-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 10px;
+      text-align: center;
+      transition: all .35s ease-out;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .device-btn .d-icon { font-size: 1.3rem; opacity: 0.7; filter: grayscale(100%); }
+    .device-btn.active {
+      border: 1.5px solid var(--journal-brown);
+      background: rgba(139,111,78,0.06);
+      color: var(--journal-brown);
+    }
+    .device-btn.active .d-icon { opacity: 1; }
+    .device-btn:hover:not(.active) { 
+      border-color: var(--accent-warm); 
+      color: var(--accent-warm); 
+      background: rgba(139,111,78,0.06); 
+    }
+    .device-btn:active { transform: scale(0.97); }
+
+    /* Capture button */
+    #btn-capture {
+      background: var(--accent-warm);
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--journal-cream);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 14px;
+      width: 100%;
+      transition: all .35s ease-out;
+    }
+    #btn-capture:hover:not(:disabled) {
+      background: var(--accent-warm-hover);
+    }
+    #btn-capture:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    #btn-capture:disabled {
+      opacity: .55; cursor: not-allowed; transform: none;
+    }
+
+    /* Progress / status */
+    #status-bar {
+      display: flex; align-items: center; gap: 10px;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      padding: 11px 14px;
+      color: var(--text-secondary);
+      min-height: 44px;
+    }
+    #status-bar.running { border-color: var(--accent-warm); color: var(--text-primary); }
+    #status-bar.done    { border-color: var(--success-ink); color: var(--success-ink); }
+    #status-bar.error   { border-color: var(--error-ink); color: var(--error-ink); }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(139,111,78,.3);
+      border-top-color: var(--accent-warm);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Recent screenshots */
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all .35s ease-out;
+      text-decoration: none;
+      animation: fadeSlideIn 0.35s ease-out;
+    }
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .recent-item:hover { border-color: var(--accent-warm); background: rgba(139,111,78,0.03); }
+    .recent-thumb {
+      width: 48px; height: 36px;
+      border-radius: 4px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--border-subtle);
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.04);
+    }
+    .recent-info { flex: 1; overflow: hidden; }
+    .recent-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .recent-time {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .recent-badge {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: var(--radius-md);
+      flex-shrink: 0;
+    }
+    .badge-mobile { background: rgba(107,127,94,.1); color: var(--journal-green); }
+    .badge-desktop { background: rgba(139,111,78,.1); color: var(--journal-brown); }
+    .badge-pdf { background: rgba(163,80,59,.1); color: var(--error-ink); }
+
+    /* ── Right panel: preview ── */
+    .panel-right {
+      background:
+        repeating-linear-gradient(90deg, rgba(61,59,56,0.04) 0px, rgba(61,59,56,0.04) 1px, transparent 1px, transparent 20px),
+        repeating-linear-gradient(0deg, rgba(61,59,56,0.04) 0px, rgba(61,59,56,0.04) 1px, transparent 1px, transparent 20px),
+        var(--journal-paper);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: auto;
+      position: relative;
+    }
+    
+    .panel-right::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+      z-index: 1;
+    }
+
+    #preview-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      color: var(--text-secondary);
+      text-align: center;
+      position: relative; z-index: 2;
+    }
+    #preview-placeholder .ph-icon { font-size: 3.5rem; opacity: .4; filter: grayscale(100%); }
+    #preview-placeholder p { font-size: 0.9rem; line-height: 1.6; font-family: var(--font-serif); font-style: italic; color: var(--text-secondary); }
+
+    #preview-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      position: relative; z-index: 2;
+      animation: fadeSlideIn 0.35s ease-out;
+    }
+
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--journal-washi);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      width: 100%;
+      max-width: 800px;
+    }
+    .preview-toolbar span { flex: 1; font-family: var(--font-serif); font-style: italic; }
+    .btn-dl {
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      padding: 6px 14px;
+      text-decoration: none;
+      transition: all .35s ease-out;
+    }
+    .btn-dl:hover { border-color: var(--accent-warm); color: var(--accent-warm); background: rgba(139,111,78,0.06); }
+    .btn-dl:active { transform: scale(0.97); }
+
+    #preview-img {
+      max-width: 100%;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.04);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border-subtle);
+      margin: 4px 0;
+    }
+
+    /* Auth warning banner */
+    #auth-warning {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(163,80,59,.06);
+      border: 1px solid rgba(163,80,59,.2);
+      border-radius: var(--radius-md);
+      color: var(--error-ink);
+      font-size: 0.85rem;
+      padding: 12px 14px;
+    }
+    #auth-warning.show { display: flex; }
+    #btn-login {
+      background: transparent;
+      border: 1.5px solid var(--error-ink);
+      border-radius: var(--radius-md);
+      color: var(--error-ink);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 8px 14px;
+      transition: all .35s ease-out;
+      align-self: flex-start;
+    }
+    #btn-login:hover { background: rgba(163,80,59,.08); }
+    #btn-login:active { transform: scale(0.97); }
+
+    /* Auth modal overlay */
+    #auth-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(61,59,56,.4);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    #auth-modal.show { display: flex; }
+    .modal-box {
+      background: var(--journal-paper);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.04);
+      max-width: 440px;
+      padding: 36px 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      animation: fadeSlideIn .35s ease-out;
+      position: relative;
+    }
+    .modal-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+      border-radius: var(--radius-lg);
+    }
+    .modal-box > * { position: relative; z-index: 2; }
+    .modal-icon { font-size: 2.5rem; filter: grayscale(100%); opacity: 0.8; }
+    .modal-title { font-size: 1.25rem; font-weight: 600; font-family: var(--font-serif); color: var(--journal-ink); }
+    .modal-body { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
+    .modal-steps {
+      background: var(--journal-washi);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      text-align: left;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      line-height: 2;
+      width: 100%;
+    }
+    .modal-steps li { list-style: none; }
+    .modal-steps li::before { margin-right: 8px; color: var(--text-muted); }
+    .modal-steps li:nth-child(1)::before { content: '1.'; font-family: var(--font-serif); }
+    .modal-steps li:nth-child(2)::before { content: '2.'; font-family: var(--font-serif); }
+    .modal-steps li:nth-child(3)::before { content: '3.'; font-family: var(--font-serif); }
+    #btn-auth-done {
+      background: var(--accent-warm);
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--journal-cream);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 500;
+      padding: 13px 28px;
+      width: 100%;
+      transition: all .35s ease-out;
+    }
+    #btn-auth-done:hover:not(:disabled) { background: var(--accent-warm-hover); }
+    #btn-auth-done:active:not(:disabled) { transform: scale(0.98); }
+    #btn-auth-done:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    #btn-auth-cancel {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      text-decoration: underline;
+    }
+    #btn-auth-cancel:hover { color: var(--text-primary); }
+    #modal-status { font-size: 0.85rem; color: var(--text-secondary); min-height: 18px; }
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      main {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+      }
+      .panel-left {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        padding: 20px 16px;
+        overflow-y: visible;
+      }
+      .panel-right {
+        padding: 20px 16px;
+        min-height: 50vh;
+      }
+      header {
+        padding: 14px 16px;
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      #auth-badge {
+        align-self: flex-start;
+      }
+      .modal-box {
+        width: 92%;
+        padding: 24px 20px;
+      }
+      .preview-toolbar {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    Shopify Screenshot
+  </div>
+  <div id="auth-badge">
+    <span class="dot checking" id="auth-dot"></span>
+    <span id="auth-text">Checking session…</span>
+  </div>
+</header>
+
+<main>
+  <!-- ── LEFT PANEL ── -->
+  <div class="panel-left">
+
+    <div>
+      <div class="section-title">Target URL</div>
+      <div class="url-group">
+        <div class="url-row">
+          <input type="url" id="url-input"
+            placeholder="Paste Shopify editor or preview URL…"
+            autocomplete="off" spellcheck="false" />
+          <button class="btn-paste" id="btn-paste" title="Paste from clipboard">📋</button>
+        </div>
+        <div id="auth-warning">
+          <span>⚠️ Session not found or expired — login required before capturing.</span>
+          <button id="btn-login">🔑 Login to Shopify</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Device</div>
+      <div class="device-group">
+        <button class="device-btn active" data-device="desktop" id="btn-desktop">
+          <span class="d-icon">🖥</span>Desktop
+        </button>
+        <button class="device-btn" data-device="mobile" id="btn-mobile">
+          <span class="d-icon">📱</span>Mobile
+        </button>
+      </div>
+    </div>
+
+    <button id="btn-capture">Capture Screenshot</button>
+
+    <div id="status-bar">Ready — enter a URL above and hit Capture.</div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-title">Recent Screenshots</div>
+      <div class="recent-list" id="recent-list">
+        <div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">No screenshots yet.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT PANEL: PREVIEW ── -->
+  <div class="panel-right">
+    <div id="preview-placeholder">
+      <p>Your screenshot will appear here.<br/>Paste a URL on the left and hit <strong>Capture</strong>.</p>
+    </div>
+
+    <div id="preview-wrap">
+      <div class="preview-toolbar">
+        <span id="preview-filename">—</span>
+        <a id="preview-dl" class="btn-dl" download>⬇ Download</a>
+      </div>
+      <img id="preview-img" src="" alt="Screenshot preview" />
+    </div>
+  </div>
+</main>
+
+<!-- ── Auth Modal ── -->
+<div id="auth-modal">
+  <div class="modal-box">
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title">Login to Shopify</div>
+    <div class="modal-body">A browser window has been launched. Complete your login (including any 2FA), then click the button below to save your session.</div>
+    <ul class="modal-steps">
+      <li>Complete login in the browser window that just opened</li>
+      <li>Handle any 2FA or captcha prompts</li>
+      <li>Come back here and click <strong>Save Session</strong></li>
+    </ul>
+    <div id="modal-status"></div>
+    <button id="btn-auth-done">✓ I've Logged In — Save Session</button>
+    <button id="btn-auth-cancel">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────
+  let selectedDevice = 'desktop';
+  let isCapturing = false;
+
+  // ── Auth check ─────────────────────────────
+  async function checkAuth() {
+    try {
+      const r = await fetch('/api/auth-status');
+      const data = await r.json();
+      const dot  = document.getElementById('auth-dot');
+      const text = document.getElementById('auth-text');
+      const warn = document.getElementById('auth-warning');
+
+      if (data.authenticated) {
+        dot.className  = 'dot ok';
+        text.textContent = 'Session active';
+        warn.classList.remove('show');
+      } else {
+        dot.className  = 'dot bad';
+        text.textContent = 'Not authenticated';
+        warn.classList.add('show');
+      }
+    } catch {
+      document.getElementById('auth-dot').className = 'dot bad';
+      document.getElementById('auth-text').textContent = 'Server error';
+    }
+  }
+
+  // ── Auth flow (UI-driven) ─────────────────
+  document.getElementById('btn-login').addEventListener('click', startLogin);
+  document.getElementById('btn-auth-cancel').addEventListener('click', closeModal);
+  // Also allow clicking the badge when unauthenticated
+  document.getElementById('auth-badge').addEventListener('click', () => {
+    if (document.getElementById('auth-dot').classList.contains('bad')) startLogin();
+  });
+
+  async function startLogin() {
+    const modalStatus = document.getElementById('modal-status');
+    modalStatus.textContent = 'Opening browser…';
+    document.getElementById('auth-modal').classList.add('show');
+    document.getElementById('btn-auth-done').disabled = true;
+
+    try {
+      const r = await fetch('/api/auth/start', { method: 'POST' });
+      const data = await r.json();
+      if (!r.ok || data.error) {
+        modalStatus.style.color = 'var(--error-ink)';
+        modalStatus.textContent = '✗ ' + (data.error || 'Failed to open browser');
+        return;
+      }
+      modalStatus.style.color = 'var(--success-ink)';
+      modalStatus.textContent = '✓ Browser opened — complete your login.';
+      document.getElementById('btn-auth-done').disabled = false;
+    } catch (err) {
+      modalStatus.style.color = 'var(--error-ink)';
+      modalStatus.textContent = '✗ Server error: ' + err.message;
+    }
+  }
+
+  document.getElementById('btn-auth-done').addEventListener('click', async () => {
+    const modalStatus = document.getElementById('modal-status');
+    const doneBtn = document.getElementById('btn-auth-done');
+    doneBtn.disabled = true;
+    doneBtn.textContent = 'Saving…';
+    modalStatus.style.color = 'var(--text-muted)';
+    modalStatus.textContent = 'Saving session cookies…';
+
+    try {
+      const r = await fetch('/api/auth/complete', { method: 'POST' });
+      const data = await r.json();
+      if (!r.ok || data.error) {
+        modalStatus.style.color = 'var(--error-ink)';
+        modalStatus.textContent = '✗ ' + (data.error || 'Failed to save session');
+        doneBtn.disabled = false;
+        doneBtn.textContent = '✓ I\'ve Logged In — Save Session';
+        return;
+      }
+      modalStatus.style.color = 'var(--success-ink)';
+      modalStatus.textContent = `✓ Session saved (${data.cookieCount} cookies)`;
+      setTimeout(() => {
+        closeModal();
+        checkAuth();
+      }, 1000);
+    } catch (err) {
+      modalStatus.style.color = 'var(--error-ink)';
+      modalStatus.textContent = '✗ ' + err.message;
+      doneBtn.disabled = false;
+      doneBtn.textContent = '✓ I\'ve Logged In — Save Session';
+    }
+  });
+
+  function closeModal() {
+    document.getElementById('auth-modal').classList.remove('show');
+    document.getElementById('btn-auth-done').disabled = false;
+    document.getElementById('btn-auth-done').textContent = '✓ I\'ve Logged In — Save Session';
+    document.getElementById('modal-status').textContent = '';
+  }
+
+  // ── Device toggle ─────────────────────────
+  document.querySelectorAll('.device-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedDevice = btn.dataset.device;
+    });
+  });
+
+  // ── Paste button ──────────────────────────
+  document.getElementById('btn-paste').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('url-input').value = text.trim();
+    } catch {
+      document.getElementById('url-input').focus();
+    }
+  });
+
+  // ── Status helper ─────────────────────────
+  function setStatus(msg, state = '') {
+    const bar = document.getElementById('status-bar');
+    bar.className = state ? `status-bar ${state}` : 'status-bar';
+    bar.id = 'status-bar'; // keep id
+    if (state === 'running') {
+      bar.innerHTML = `<div class="spinner"></div> ${msg}`;
+    } else {
+      bar.textContent = msg;
+    }
+    bar.style.borderColor = state === 'running' ? 'var(--accent-warm)'
+                          : state === 'done'    ? 'var(--success-ink)'
+                          : state === 'error'   ? 'var(--error-ink)'
+                          : 'var(--border-strong)';
+    bar.style.color = state === 'running' ? 'var(--text-primary)'
+                    : state === 'done'    ? 'var(--success-ink)'
+                    : state === 'error'   ? 'var(--error-ink)'
+                    : 'var(--text-secondary)';
+  }
+
+  // ── Capture ───────────────────────────────
+  document.getElementById('btn-capture').addEventListener('click', captureScreenshot);
+  document.getElementById('url-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') captureScreenshot();
+  });
+
+  async function captureScreenshot() {
+    const url = document.getElementById('url-input').value.trim();
+    if (!url) {
+      setStatus('⚠ Please enter a URL first.', 'error');
+      return;
+    }
+    if (isCapturing) return;
+    isCapturing = true;
+
+    const btn = document.getElementById('btn-capture');
+    btn.disabled = true;
+    setStatus('Launching browser and navigating…', 'running');
+
+    try {
+      const res = await fetch('/api/screenshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, mobile: selectedDevice === 'mobile' })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setStatus('✗ Error: ' + (data.error || 'Unknown error'), 'error');
+        return;
+      }
+
+      setStatus('✓ Saved to ' + data.file, 'done');
+      showPreview(data.file);
+      loadRecent();
+
+    } catch (err) {
+      setStatus('✗ Network error: ' + err.message, 'error');
+    } finally {
+      isCapturing = false;
+      btn.disabled = false;
+    }
+  }
+
+  // ── Preview ───────────────────────────────
+  function showPreview(filePath) {
+    document.getElementById('preview-placeholder').style.display = 'none';
+    const wrap = document.getElementById('preview-wrap');
+    wrap.style.display = 'flex';
+
+    const filename = filePath.split('/').pop();
+    document.getElementById('preview-filename').textContent = filename;
+
+    const img = document.getElementById('preview-img');
+    img.src = filePath + '?t=' + Date.now();
+
+    const dl = document.getElementById('preview-dl');
+    dl.href = filePath;
+    dl.download = filename;
+  }
+
+  // ── Recent list ───────────────────────────
+  async function loadRecent() {
+    const list = document.getElementById('recent-list');
+    try {
+      const r = await fetch('/api/screenshots');
+      const items = await r.json();
+      if (!items.length) {
+        list.innerHTML = '<div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">No screenshots yet.</div>';
+        return;
+      }
+      list.innerHTML = items.map(item => {
+        const isMobile  = item.name.includes('_mobile');
+        const isPdf     = item.name.endsWith('.pdf');
+        const badge     = isPdf ? '<span class="recent-badge badge-pdf">PDF</span>'
+                        : isMobile ? '<span class="recent-badge badge-mobile">Mobile</span>'
+                        : '<span class="recent-badge badge-desktop">Desktop</span>';
+        const timeAgo   = formatAgo(item.mtime);
+        const thumbSrc  = isPdf ? '' : item.url;
+        const thumbTag  = isPdf
+          ? `<div class="recent-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📄</div>`
+          : `<img class="recent-thumb" src="${thumbSrc}" alt="" loading="lazy" />`;
+
+        return `<a class="recent-item" href="#" data-url="${item.url}" data-name="${item.name}">
+          ${thumbTag}
+          <div class="recent-info">
+            <div class="recent-name">${item.name}</div>
+            <div class="recent-time">${timeAgo}</div>
+          </div>
+          ${badge}
+        </a>`;
+      }).join('');
+
+      list.querySelectorAll('.recent-item').forEach(el => {
+        el.addEventListener('click', e => {
+          e.preventDefault();
+          showPreview(el.dataset.url);
+          document.getElementById('url-input').value = '';
+        });
+      });
+    } catch {
+      list.innerHTML = '<div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">Failed to load.</div>';
+    }
+  }
+
+  function formatAgo(ms) {
+    const diff = Date.now() - ms;
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return 'Just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h/24)}d ago`;
+  }
+
+  // ── Init ──────────────────────────────────
+  checkAuth();
+  loadRecent();
+</script>
+</body>
+</html>

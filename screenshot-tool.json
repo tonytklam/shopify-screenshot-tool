@@ -1,0 +1,19 @@
+{
+  "name": "shopify_screenshot",
+  "description": "Takes a full-page screenshot of a specific Shopify store URL. Returns the file path of the saved image.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "The specific Shopify URL to capture, e.g. a preview link 'https://store.myshopify.com/?preview_theme_id=123'"
+      },
+      "as_pdf": {
+        "type": "boolean",
+        "description": "If true, saves as PDF instead of PNG",
+        "default": false
+      }
+    },
+    "required": ["url"]
+  }
+}
