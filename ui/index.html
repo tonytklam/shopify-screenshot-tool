@@ -300,6 +300,84 @@
     .badge-desktop { background: rgba(139,111,78,.1); color: var(--journal-brown); }
     .badge-pdf { background: rgba(163,80,59,.1); color: var(--error-ink); }
 
+    /* ── Trash / Delete controls ── */
+    .section-trash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .section-trash-header .section-title { margin-bottom: 0; }
+    .btn-remove-all {
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 5px 10px;
+      transition: all .35s ease-out;
+    }
+    .btn-remove-all:hover {
+      border-color: var(--error-ink);
+      color: var(--error-ink);
+      background: rgba(163,80,59,0.06);
+    }
+    .delete-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      border-radius: 4px;
+      padding: 0;
+      transition: all .35s ease-out;
+    }
+    .delete-btn:hover {
+      background: rgba(163,80,59,.12);
+      color: var(--error-ink);
+    }
+    .delete-btn:active { transform: scale(0.95); }
+    .restore-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      border-radius: 4px;
+      padding: 0;
+      transition: all .35s ease-out;
+    }
+    .restore-btn:hover {
+      background: rgba(107,127,94,.12);
+      color: var(--journal-green);
+    }
+    .restore-btn:active { transform: scale(0.95); }
+
+    .recent-item {
+      position: relative;
+    }
+    .recent-item .delete-btn {
+      opacity: 0;
+    }
+    .recent-item:hover .delete-btn {
+      opacity: 1;
+    }
+
     /* ── Right panel: preview ── */
     .panel-right {
       background:
@@ -592,9 +670,22 @@
     <div class="divider"></div>
 
     <div>
-      <div class="section-title">Recent Screenshots</div>
+      <div class="section-trash-header">
+        <div class="section-title">Recent Screenshots</div>
+        <button class="btn-remove-all" id="btn-remove-all" title="Move all to trash" style="display:none;">Remove all</button>
+      </div>
       <div class="recent-list" id="recent-list">
         <div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">No screenshots yet.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:8px;">
+      <div class="section-trash-header">
+        <div class="section-title">Trash</div>
+        <button class="btn-remove-all" id="btn-empty-trash" title="Empty trash" style="display:none;">Empty trash</button>
+      </div>
+      <div class="recent-list" id="trash-list" style="display:none;">
+        <div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">Trash is empty.</div>
       </div>
     </div>
 
@@ -836,13 +927,16 @@
   // ── Recent list ───────────────────────────
   async function loadRecent() {
     const list = document.getElementById('recent-list');
+    const btnRemoveAll = document.getElementById('btn-remove-all');
     try {
       const r = await fetch('/api/screenshots');
       const items = await r.json();
       if (!items.length) {
         list.innerHTML = '<div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">No screenshots yet.</div>';
+        btnRemoveAll.style.display = 'none';
         return;
       }
+      btnRemoveAll.style.display = '';
       list.innerHTML = items.map(item => {
         const isMobile  = item.name.includes('_mobile');
         const isPdf     = item.name.endsWith('.pdf');
@@ -855,27 +949,171 @@
           ? `<div class="recent-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📄</div>`
           : `<img class="recent-thumb" src="${thumbSrc}" alt="" loading="lazy" />`;
 
-        return `<a class="recent-item" href="#" data-url="${item.url}" data-name="${item.name}">
+        return `<div class="recent-item" data-url="${item.url}" data-name="${item.name}">
           ${thumbTag}
           <div class="recent-info">
             <div class="recent-name">${item.name}</div>
             <div class="recent-time">${timeAgo}</div>
           </div>
           ${badge}
-        </a>`;
+          <button class="delete-btn" data-name="${item.name}" title="Move to trash">✕</button>
+        </div>`;
       }).join('');
 
       list.querySelectorAll('.recent-item').forEach(el => {
         el.addEventListener('click', e => {
+          if (e.target.closest('.delete-btn')) return;
           e.preventDefault();
           showPreview(el.dataset.url);
           document.getElementById('url-input').value = '';
+        });
+      });
+
+      list.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          try {
+            const r = await fetch(`/api/screenshots/${encodeURIComponent(name)}/trash`, { method: 'POST' });
+            if (r.ok) {
+              loadRecent();
+              loadTrash();
+            } else {
+              const data = await r.json();
+              console.error('Move to trash failed:', data.error);
+            }
+          } catch (err) {
+            console.error('Move to trash error:', err);
+          }
         });
       });
     } catch {
       list.innerHTML = '<div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">Failed to load.</div>';
     }
   }
+
+  // ── Trash list ────────────────────────────
+  async function loadTrash() {
+    const list = document.getElementById('trash-list');
+    const btnEmpty = document.getElementById('btn-empty-trash');
+    try {
+      const r = await fetch('/api/trash');
+      const items = await r.json();
+      if (!items.length) {
+        list.innerHTML = '<div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">Trash is empty.</div>';
+        list.style.display = 'none';
+        btnEmpty.style.display = 'none';
+        return;
+      }
+      list.style.display = 'flex';
+      btnEmpty.style.display = '';
+      list.innerHTML = items.map(item => {
+        const isMobile  = item.name.includes('_mobile');
+        const isPdf     = item.name.endsWith('.pdf');
+        const badge     = isPdf ? '<span class="recent-badge badge-pdf">PDF</span>'
+                        : isMobile ? '<span class="recent-badge badge-mobile">Mobile</span>'
+                        : '<span class="recent-badge badge-desktop">Desktop</span>';
+        const timeAgo   = formatAgo(item.mtime);
+        const thumbSrc  = isPdf ? '' : item.url;
+        const thumbTag  = isPdf
+          ? `<div class="recent-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📄</div>`
+          : `<img class="recent-thumb" src="${thumbSrc}" alt="" loading="lazy" />`;
+
+        return `<div class="recent-item" data-url="${item.url}" data-name="${item.name}">
+          ${thumbTag}
+          <div class="recent-info">
+            <div class="recent-name">${item.name}</div>
+            <div class="recent-time">${timeAgo}</div>
+          </div>
+          ${badge}
+          <button class="restore-btn" data-name="${item.name}" title="Restore">↺</button>
+          <button class="delete-btn" data-name="${item.name}" title="Delete permanently" style="opacity:1;margin-left:4px;">✕</button>
+        </div>`;
+      }).join('');
+
+      list.querySelectorAll('.recent-item').forEach(el => {
+        el.addEventListener('click', e => {
+          if (e.target.closest('.delete-btn') || e.target.closest('.restore-btn')) return;
+          e.preventDefault();
+          showPreview(el.dataset.url);
+          document.getElementById('url-input').value = '';
+        });
+      });
+
+      list.querySelectorAll('.restore-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          try {
+            const r = await fetch(`/api/trash/${encodeURIComponent(name)}/restore`, { method: 'POST' });
+            if (r.ok) {
+              loadRecent();
+              loadTrash();
+            } else {
+              const data = await r.json();
+              console.error('Restore failed:', data.error);
+            }
+          } catch (err) {
+            console.error('Restore error:', err);
+          }
+        });
+      });
+
+      list.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          if (!confirm(`Permanently delete ${name}? This cannot be undone.`)) return;
+          try {
+            const r = await fetch(`/api/trash/${encodeURIComponent(name)}/delete`, { method: 'POST' });
+            if (r.ok) {
+              loadTrash();
+            } else {
+              const data = await r.json();
+              console.error('Delete failed:', data.error);
+            }
+          } catch (err) {
+            console.error('Delete error:', err);
+          }
+        });
+      });
+    } catch {
+      list.innerHTML = '<div style="color:var(--text-secondary);font-size:.8rem;font-family:var(--font-serif);font-style:italic;">Failed to load trash.</div>';
+    }
+  }
+
+  // ── Move all to trash ──────────────────────
+  document.getElementById('btn-remove-all').addEventListener('click', async () => {
+    if (!confirm('Move all screenshots to trash?')) return;
+    try {
+      const r = await fetch('/api/screenshots/trash', { method: 'POST' });
+      if (r.ok) {
+        loadRecent();
+        loadTrash();
+      } else {
+        const data = await r.json();
+        console.error('Remove all failed:', data.error);
+      }
+    } catch (err) {
+      console.error('Remove all error:', err);
+    }
+  });
+
+  // ── Empty trash ───────────────────────────
+  document.getElementById('btn-empty-trash').addEventListener('click', async () => {
+    if (!confirm('Permanently delete all items in trash? This cannot be undone.')) return;
+    try {
+      const r = await fetch('/api/trash/empty', { method: 'POST' });
+      if (r.ok) {
+        loadTrash();
+      } else {
+        const data = await r.json();
+        console.error('Empty trash failed:', data.error);
+      }
+    } catch (err) {
+      console.error('Empty trash error:', err);
+    }
+  });
 
   function formatAgo(ms) {
     const diff = Date.now() - ms;
@@ -890,6 +1128,7 @@
   // ── Init ──────────────────────────────────
   checkAuth();
   loadRecent();
+  loadTrash();
 </script>
 </body>
 </html>

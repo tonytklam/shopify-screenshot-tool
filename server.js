@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, 'ui')));
 
 // Serve screenshots as static files
 app.use('/screenshots', express.static(path.join(__dirname, 'screenshots')));
+app.use('/trash', express.static(path.join(__dirname, 'trash')));
 
 // --- Auth status check ---
 app.get('/api/auth-status', (req, res) => {
@@ -126,6 +127,121 @@ app.get('/api/screenshots', (req, res) => {
     .slice(0, 20);
 
   res.json(files);
+});
+
+// --- Trash helpers ---
+function getTrashDir() {
+  const dir = path.join(__dirname, 'trash');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function getScreenshotsDir() {
+  const dir = path.join(__dirname, 'screenshots');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+// --- List trashed screenshots ---
+app.get('/api/trash', (req, res) => {
+  const dir = getTrashDir();
+  const files = fs.readdirSync(dir)
+    .filter(f => f.match(/\.(png|pdf)$/))
+    .map(f => {
+      const stat = fs.statSync(path.join(dir, f));
+      return { name: f, url: `/trash/${f}`, mtime: stat.mtimeMs };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+  res.json(files);
+});
+
+// --- Move single screenshot to trash ---
+app.post('/api/screenshots/:name/trash', (req, res) => {
+  const screenshotsDir = getScreenshotsDir();
+  const trashDir = getTrashDir();
+  const src = path.join(screenshotsDir, req.params.name);
+  const dest = path.join(trashDir, req.params.name);
+
+  if (!fs.existsSync(src)) {
+    return res.status(404).json({ error: 'Screenshot not found' });
+  }
+  try {
+    fs.renameSync(src, dest);
+    res.json({ ok: true, name: req.params.name });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Move all screenshots to trash ---
+app.post('/api/screenshots/trash', (req, res) => {
+  const screenshotsDir = getScreenshotsDir();
+  const trashDir = getTrashDir();
+  const files = fs.readdirSync(screenshotsDir)
+    .filter(f => f.match(/\.(png|pdf)$/));
+
+  let moved = 0;
+  for (const f of files) {
+    try {
+      fs.renameSync(path.join(screenshotsDir, f), path.join(trashDir, f));
+      moved++;
+    } catch (err) {
+      console.error(`Failed to trash ${f}:`, err.message);
+    }
+  }
+  res.json({ ok: true, moved });
+});
+
+// --- Restore from trash ---
+app.post('/api/trash/:name/restore', (req, res) => {
+  const screenshotsDir = getScreenshotsDir();
+  const trashDir = getTrashDir();
+  const src = path.join(trashDir, req.params.name);
+  const dest = path.join(screenshotsDir, req.params.name);
+
+  if (!fs.existsSync(src)) {
+    return res.status(404).json({ error: 'File not found in trash' });
+  }
+  try {
+    fs.renameSync(src, dest);
+    res.json({ ok: true, name: req.params.name });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Permanently delete from trash ---
+app.post('/api/trash/:name/delete', (req, res) => {
+  const trashDir = getTrashDir();
+  const target = path.join(trashDir, req.params.name);
+
+  if (!fs.existsSync(target)) {
+    return res.status(404).json({ error: 'File not found in trash' });
+  }
+  try {
+    fs.unlinkSync(target);
+    res.json({ ok: true, name: req.params.name });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Empty trash ---
+app.post('/api/trash/empty', (req, res) => {
+  const trashDir = getTrashDir();
+  const files = fs.readdirSync(trashDir)
+    .filter(f => f.match(/\.(png|pdf)$/));
+
+  let deleted = 0;
+  for (const f of files) {
+    try {
+      fs.unlinkSync(path.join(trashDir, f));
+      deleted++;
+    } catch (err) {
+      console.error(`Failed to delete ${f}:`, err.message);
+    }
+  }
+  res.json({ ok: true, deleted });
 });
 
 app.listen(PORT, () => {
